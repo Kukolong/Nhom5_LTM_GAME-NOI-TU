@@ -1,6 +1,6 @@
 """
 Word Chain Game - Word Validation Utility Module
-Handles Vietnamese character normalization, word chain rules, and dictionary validation.
+Handles Vietnamese character normalization and word chain rules.
 """
 
 import unicodedata
@@ -39,14 +39,14 @@ def remove_accents(text):
 def is_valid_chain_move(previous_word, new_word):
     """
     Validate that new_word follows the word chain rule:
-    The first letter of the first word in new_word must match the last letter of the last word in previous_word.
+    The first word of new_word must match the last word of previous_word.
     
     Args:
         previous_word: The previously submitted valid phrase
         new_word: The new phrase to validate
     
     Returns:
-        True if new_word starts with the last letter of previous_word's last word, False otherwise
+        True if new_word starts with the last word of previous_word, False otherwise
     """
     if not previous_word or not new_word:
         return False
@@ -65,76 +65,29 @@ def is_valid_chain_move(previous_word, new_word):
     if not prev_words or not new_words:
         return False
     
-    # Get last letter of last word in previous phrase
-    prev_last_letter = prev_words[-1][-1]
-    # Get first letter of first word in new phrase
-    new_first_letter = new_words[0][0]
+    # Get last word in previous phrase
+    prev_last_word = prev_words[-1]
+    # Get first word in new phrase
+    new_first_word = new_words[0]
     
-    return prev_last_letter == new_first_letter
-
-
-def is_valid_word(word, dictionary_set):
-    """
-    Check if a phrase exists in the Vietnamese dictionary.
-    
-    Args:
-        word: The phrase to validate
-        dictionary_set: Set of valid phrases from the dictionary (pre-normalized to NFC, lowercase)
-    
-    Returns:
-        True if word is in dictionary, False otherwise
-    """
-    normalized = normalize_vietnamese(word)
-    return normalized in dictionary_set
+    return prev_last_word == new_first_word
 
 
 def get_next_letter_constraint(word):
     """
-    Get the constraint letter that the next player's phrase must start with.
+    Get the constraint word that the next player's phrase must start with.
     
     Args:
         word: The last accepted phrase in the chain
     
     Returns:
-        The normalized last letter of the last word in the phrase (lowercase, NFC normalized)
+        The normalized last word in the phrase (lowercase, NFC normalized)
     """
     normalized = normalize_vietnamese(word)
     words = normalized.split()
     if words:
-        return words[-1][-1]
+        return words[-1]
     return None
-
-
-def load_dictionary(filepath):
-    """
-    Load Vietnamese dictionary from file.
-    Each line should contain a valid Vietnamese phrase (two words separated by space).
-    Phrases are normalized to NFC and lowercase.
-    
-    Args:
-        filepath: Path to the dictionary file
-    
-    Returns:
-        Set of normalized Vietnamese phrases
-    
-    Raises:
-        FileNotFoundError: If dictionary file doesn't exist
-        IOError: If there's an error reading the file
-    """
-    dictionary = set()
-    try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            for line in f:
-                word = line.strip()
-                if word:  # Skip empty lines
-                    normalized = normalize_vietnamese(word)
-                    if normalized:  # Skip words that become empty after normalization
-                        dictionary.add(normalized)
-        return dictionary
-    except FileNotFoundError:
-        raise FileNotFoundError(f"Dictionary file not found: {filepath}")
-    except IOError as e:
-        raise IOError(f"Error reading dictionary file: {e}")
 
 
 def validate_player_name(name):
@@ -170,12 +123,12 @@ if __name__ == "__main__":
     # Test 2: Chain validation
     print("\nTest 2: Chain Validation")
     test_cases = [
-        ("apple", "egg", True),
-        ("dog", "dog", False),
-        ("dog", "guitar", False),
-        ("can", "nước", True),
-        ("mèo", "ốc", True),
-        ("mèo", "ốc", True),
+        ("xe máy", "máy bay", True),
+        ("máy bay", "bay lượn", True),
+        ("xe máy", "xe đạp", False),
+        ("bàn ghế", "ghế đẩu", True),
+        ("thời gian", "gian khổ", True),
+        ("con mèo", "con chó", False),
     ]
     for prev, new, expected in test_cases:
         result = is_valid_chain_move(prev, new)
@@ -183,8 +136,8 @@ if __name__ == "__main__":
         print(f"  {status} '{prev}' → '{new}': {result} (expected {expected})")
     
     # Test 3: Next letter constraint
-    print("\nTest 3: Next Letter Constraint")
-    test_words = ["apple", "mèo", "tiến"]
+    print("\nTest 3: Next Word Constraint")
+    test_words = ["xe máy", "máy bay", "bay lượn"]
     for word in test_words:
         next_letter = get_next_letter_constraint(word)
         print(f"  '{word}' → next word must start with: '{next_letter}'")
