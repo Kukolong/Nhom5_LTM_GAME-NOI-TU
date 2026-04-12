@@ -1033,8 +1033,6 @@ khởi sắc
 tươi sáng
 huy hoàng
 rực rỡ
-Đây là đợt từ vựng tiếp theo, mình đã lọc kỹ để không trùng với tất cả các danh sách phía trên. Danh sách này tập trung vào các từ chỉ trạng thái, đồ vật cụ thể, sinh vật và các khái niệm trừu tượng ít dùng hơn để bạn làm khó đối thủ.
-
 chót lọt
 chót bảng
 chót đỉnh
@@ -1746,9 +1744,6 @@ số đỏ
 tối tăm
 tăm tắp
 tắp lự
-thought
-Chào bạn, mình đã tiếp tục lọc và chọn ra các từ vựng mới hoàn toàn, không trùng với tất cả các danh sách phía trên. Danh sách này sẽ bổ sung thêm nhiều danh từ, động từ và từ láy đặc sắc để bạn làm phong phú kho "vũ khí" của mình.
-
 lòng vòng
 vòng vèo
 vèo vọt
@@ -2274,8 +2269,6 @@ bầm dập
 dập dìu
 dìu dắt
 dắt díu
-Để đảm bảo không trùng với các danh sách dài dặc ở phía trên, mình sẽ khai thác sâu vào các nhóm từ chuyên biệt hơn như: từ chỉ bộ phận cơ thể, từ cổ, từ láy tượng hình/tượng thanh và các khái niệm kỹ thuật.
-
 xương quai
 quai hàm
 hàm thiếc
@@ -2804,8 +2797,6 @@ rộ tin
 tin nhanh
 nhanh nhẹn
 nhàng nhãng
-Để không bị trùng với hàng nghìn từ đã liệt kê ở trên, mình sẽ tập trung vào các từ láy đặc biệt, từ chỉ sinh vật cụ thể, các danh từ về sản vật địa phương và từ mượn đã Việt hóa trong từ điển nhé.
-
 nhôm nhựa
 nhựa đường
 đường phèn
