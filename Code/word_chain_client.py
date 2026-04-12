@@ -1,6 +1,5 @@
 """
-Word Chain Game - Client v3
-Simple client for match-found system (immediate game start).
+Word Chain Game
 """
 
 import socket
