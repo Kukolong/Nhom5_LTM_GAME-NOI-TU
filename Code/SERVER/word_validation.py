@@ -1,6 +1,6 @@
 """
-Word Chain Game - Word Validation Utility Module
-Handles Vietnamese character normalization and word chain rules.
+Game nối từ - Module tiện ích kiểm tra từ
+Xử lý chuẩn hóa ký tự tiếng Việt và các quy tắc của game nối từ.
 """
 
 import unicodedata
@@ -9,28 +9,28 @@ import re
 
 def normalize_vietnamese(text):
     """
-    Normalize Vietnamese text to NFC (Composed) form.
-    This ensures consistent handling of Vietnamese characters with tone marks and accents.
+    Chuẩn hóa văn bản tiếng Việt về dạng NFC (Composed).
+    Đảm bảo xử lý nhất quán các ký tự tiếng Việt có dấu.
     
     Args:
-        text: Input string (Vietnamese or any Unicode text)
+        text: Chuỗi đầu vào (tiếng Việt hoặc bất kỳ văn bản Unicode nào)
     
     Returns:
-        Normalized string in NFC form
+        Chuỗi đã được chuẩn hóa ở dạng NFC
     """
     return unicodedata.normalize('NFC', text.strip().lower())
 
 
 def remove_accents(text):
     """
-    Remove Vietnamese accents and tone marks from text.
-    Useful for case-insensitive and accent-insensitive comparison.
+    Loại bỏ dấu tiếng Việt khỏi văn bản.
+    Hữu ích cho việc so sánh không phân biệt hoa thường và không phân biệt dấu.
     
     Args:
-        text: Input string
+        text: Chuỗi đầu vào
     
     Returns:
-        String without combining diacritical marks (Mn category)
+        Chuỗi không chứa các dấu phụ (danh mục Mn)
     """
     nfd = unicodedata.normalize('NFD', text)
     return ''.join(c for c in nfd if unicodedata.category(c) != 'Mn')
@@ -38,36 +38,36 @@ def remove_accents(text):
 
 def is_valid_chain_move(previous_word, new_word):
     """
-    Validate that new_word follows the word chain rule:
-    The first word of new_word must match the last word of previous_word.
+    Kiểm tra xem từ mới có tuân theo luật game nối từ hay không:
+    Chữ đầu tiên của từ mới phải trùng với chữ cuối cùng của từ trước đó.
     
     Args:
-        previous_word: The previously submitted valid phrase
-        new_word: The new phrase to validate
+        previous_word: Cụm từ hợp lệ đã được đánh trước đó
+        new_word: Cụm từ mới cần kiểm tra
     
     Returns:
-        True if new_word starts with the last word of previous_word, False otherwise
+        True nếu từ mới bắt đầu bằng chữ cuối của từ trước đó, False nếu ngược lại
     """
     if not previous_word or not new_word:
         return False
     
-    # Normalize both phrases
+    # Chuẩn hóa cả hai cụm từ
     prev_normalized = normalize_vietnamese(previous_word)
     new_normalized = normalize_vietnamese(new_word)
     
     if not prev_normalized or not new_normalized:
         return False
     
-    # Split into words
+    # Tách thành các chữ
     prev_words = prev_normalized.split()
     new_words = new_normalized.split()
     
     if not prev_words or not new_words:
         return False
     
-    # Get last word in previous phrase
+    # Lấy chữ cuối cùng trong cụm từ trước
     prev_last_word = prev_words[-1]
-    # Get first word in new phrase
+    # Lấy chữ đầu tiên trong cụm từ mới
     new_first_word = new_words[0]
     
     return prev_last_word == new_first_word
@@ -75,13 +75,13 @@ def is_valid_chain_move(previous_word, new_word):
 
 def get_next_letter_constraint(word):
     """
-    Get the constraint word that the next player's phrase must start with.
+    Lấy chữ bắt buộc mà cụm từ của người chơi tiếp theo phải dùng để bắt đầu.
     
     Args:
-        word: The last accepted phrase in the chain
+        word: Cụm từ hợp lệ cuối cùng trong chuỗi
     
     Returns:
-        The normalized last word in the phrase (lowercase, NFC normalized)
+        Chữ cuối cùng đã được chuẩn hóa trong cụm từ (chữ thường, chuẩn hóa NFC)
     """
     normalized = normalize_vietnamese(word)
     words = normalized.split()
@@ -92,16 +92,16 @@ def get_next_letter_constraint(word):
 
 def load_dictionary(filepath):
     """
-    Load dictionary from file into a set for O(1) lookup.
+    Tải từ điển từ file vào một cấu trúc set để tra cứu nhanh với độ phức tạp O(1).
 
     Args:
-        filepath (str): Path to dictionary file
+        filepath (str): Đường dẫn đến file từ điển
 
     Returns:
-        set: Normalized words
+        set: Tập hợp các từ đã được chuẩn hóa
 
     Raises:
-        FileNotFoundError: if file does not exist
+        FileNotFoundError: nếu không tìm thấy file
     """
     words = set()
     with open(filepath, 'r', encoding='utf-8') as f:
@@ -116,14 +116,14 @@ def load_dictionary(filepath):
 
 def is_valid_word(word, dictionary):
     """
-    Check if a word exists in the given dictionary set.
+    Kiểm tra xem một từ có tồn tại trong tập hợp từ điển đã cho hay không.
 
     Args:
-        word (str): Word to check
-        dictionary (set): Set of normalized words
+        word (str): Từ cần kiểm tra
+        dictionary (set): Tập hợp các từ đã chuẩn hóa
 
     Returns:
-        bool: True if word is in dictionary
+        bool: True nếu từ có trong từ điển
     """
     normalized = normalize_vietnamese(word)
     return normalized in dictionary
@@ -131,13 +131,13 @@ def is_valid_word(word, dictionary):
 
 def validate_player_name(name):
     """
-    Basic validation for player name.
+    Kiểm tra tính hợp lệ cơ bản cho tên người chơi.
     
     Args:
-        name: Player name to validate
+        name: Tên người chơi cần kiểm tra
     
     Returns:
-        Tuple (is_valid, error_message)
+        Tuple (is_valid, error_message) chứa trạng thái hợp lệ và thông báo lỗi
     """
     if not name:
         return False, "Player name cannot be empty"
@@ -149,17 +149,17 @@ def validate_player_name(name):
 
 
 if __name__ == "__main__":
-    # Simple test cases
+    # Các test case đơn giản
     print("=== Word Chain Game - Validation Tests ===\n")
     
-    # Test 1: Vietnamese normalization
+    # Test 1: Chuẩn hóa tiếng Việt
     print("Test 1: Vietnamese Normalization")
     test_words = ["Tiến", "TIẾN", "tiến"]
     for word in test_words:
         normalized = normalize_vietnamese(word)
         print(f"  '{word}' → '{normalized}'")
     
-    # Test 2: Chain validation
+    # Test 2: Kiểm tra luật nối từ
     print("\nTest 2: Chain Validation")
     test_cases = [
         ("xe máy", "máy bay", True),
@@ -174,14 +174,14 @@ if __name__ == "__main__":
         status = "✓" if result == expected else "✗"
         print(f"  {status} '{prev}' → '{new}': {result} (expected {expected})")
     
-    # Test 3: Next letter constraint
+    # Test 3: Ràng buộc chữ tiếp theo
     print("\nTest 3: Next Word Constraint")
     test_words = ["xe máy", "máy bay", "bay lượn"]
     for word in test_words:
         next_letter = get_next_letter_constraint(word)
         print(f"  '{word}' → next word must start with: '{next_letter}'")
     
-    # Test 4: Player name validation
+    # Test 4: Kiểm tra tên người chơi
     print("\nTest 4: Player Name Validation")
     test_names = ["Alice", "Player 123", "a", "a" * 25, "Alice@123"]
     for name in test_names:
