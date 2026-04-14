@@ -220,7 +220,7 @@ class TurnTimer:
  
 class WordChainClient:
  
-    TURN_TIMEOUT = 10   # giây — khớp server
+    TURN_TIMEOUT = 30   # giây — khớp server
  
     def __init__(self, host='localhost', port=5000):
         self.host = host
@@ -603,10 +603,11 @@ def main():
  
         want_rematch = ask_rematch()
         if not want_rematch:
+            client.send_giveup()
             print()
             print_info(f"Cảm ơn {col(C.BOLD, player_name)} đã chơi! Hẹn gặp lại 👋")
             break
- 
+        client._send_raw({'type': 'rematch'})
         print_info("Đang kết nối lại để chơi ván mới...")
         if not client.reconnect():
             print_error("Không thể kết nối lại. Thoát.")
