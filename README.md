@@ -166,38 +166,6 @@ python word_chain_client.py
 
 ---
 
-## 🧪 Kiểm Thử
-
-```bash
-# Test xác thực từ và chuỗi
-python word_validation.py
-```
-
-**Kết quả mẫu:**
-
-```
-=== Word Chain Game - Comprehensive Test ===
-
-=== TEST 1: Single Player Word Chain ===
-Player joined
-Word 1: 'con vịt'   accepted  (next: vịt)
-Word 2: 'vịt trời'  accepted  (next: trời)
-Word 3: 'trời đêm'  accepted  (next: đêm)
-Word 4: 'đêm tối'   accepted  (next: tối)
-Word 5: 'tối đen'   accepted  (next: đen)
-
-=== TEST 2: Invalid Word Chain Detection ===
-First word 'ba' sent
-Invalid chain rejected: Word must start with 'con'
-
-=== TEST 3: Player Name Validation ===
-Empty name rejected
-Valid name accepted
-
-All tests completed
-```
-
----
 
 ## ⚠️ Xử Lý Lỗi
 
