@@ -12,7 +12,7 @@ Truyền tải dữ liệu thời gian thực
 Xác thực dữ liệu phía server
 Luật chơi
 Mỗi người chơi nhập một từ tiếng Việt.
-Từ tiếp theo phải bắt đầu bằng chữ cái cuối của từ trước đó.
+Từ tiếp theo phải bắt đầu bằng chữ cuối của từ trước đó.
 Từ nhập phải tồn tại trong từ điển tiếng Việt.
 Server kiểm tra tính hợp lệ và gửi kết quả đến tất cả người chơi.
 
@@ -49,9 +49,11 @@ word-chain-game/
 ├── word_chain_server.py
 ├── word_chain_client.py
 ├── word_validation.py
+├── dictionary_system.py
 ├── vietnamese_dictionary.txt
-├── README.md
-└── test_*.py
+├── Ui.py
+├── main.py
+└── README.md
 Cách chạy chương trình
 Bước 1: Khởi động Server
 python word_chain_server.py
