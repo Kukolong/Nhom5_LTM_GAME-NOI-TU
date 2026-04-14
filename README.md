@@ -11,7 +11,6 @@ Một trò chơi nối từ đa người chơi sử dụng kiến trúc **client
 - [Cài Đặt](#cài-đặt)
 - [Cấu Trúc Dự Án](#cấu-trúc-dự-án)
 - [Hướng Dẫn Sử Dụng](#hướng-dẫn-sử-dụng)
-- [Kiểm Thử](#kiểm-thử)
 - [Cấu Hình](#cấu-hình)
 
 ---
