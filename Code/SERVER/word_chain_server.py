@@ -215,10 +215,20 @@ class WordChainServer:
             
             with self.names_lock:
                 if player_name in self.active_names:
-                    self.send_message(client_socket, {'type': 'error', 'message': 'Name already taken'})
-                    return
+                    print(f"[NAME] '{player_name}' is already active → forcing cleanup for rematch")
+
+                    # Kiểm tra xem tên này có thật sự đang trong trận không
+                    still_in_match = False
+                    with self.matches_lock:
+                        for m in list(self.matches.values()):
+                            if m.player1_name == player_name or m.player2_name == player_name:
+                                still_in_match = True
+                                break
+                    
+                    if not still_in_match:
+                        self.active_names.discard(player_name)   # Xóa tên cũ để cho reconnect
+
                 self.active_names.add(player_name)
-            print(f"[SERVER] Player '{player_name}' from {client_addr} waiting for match...")
             
             # Add to waiting queue
             with self.queue_lock:
@@ -413,34 +423,50 @@ class WordChainServer:
         self._try_match_players()
 
     def _try_match_players(self):
+        #Thử ghép đôi người chơi đang chờ. Chạy lại nhiều lần nếu cần.
         with self.queue_lock:
-            pairs = []
             while len(self.waiting_queue) >= 2:
                 p1_sock, p1_name = self.waiting_queue.pop(0)
                 p2_sock, p2_name = self.waiting_queue.pop(0)
-                pairs.append((p1_sock, p1_name, p2_sock, p2_name))
-                
-            for  p1_sock, p1_name, p2_sock, p2_name in pairs:
-                new_match = Match(p1_sock, p1_name, p2_sock, p2_name, self.dictionary)
-                new_match.start_timeout_watcher(self)
-                
 
-                with self.matches_lock:
-                    self.matches[p1_sock] = new_match
-                    self.matches[p2_sock] = new_match
+                print(f"[MATCHMAKING] Ghép đôi: {p1_name} vs {p2_name}")
 
-                # gửi game_start
-                for sock, name, opponent in [
-                    (p1_sock, p1_name, p2_name),
-                    (p2_sock, p2_name, p1_name)
-                ]:
-                    self.send_message(sock, {
-                        'type': 'game_start',
-                        'opponent_name': opponent,
-                        'current_word': new_match.current_word,
-                        'next_letter': get_next_letter_constraint(new_match.current_word),
-                        'your_turn': new_match.current_player_name == name
-                })
+                try:
+                    new_match = Match(p1_sock, p1_name, p2_sock, p2_name, self.dictionary)
+                    new_match.start_timeout_watcher(self)
+
+                    with self.matches_lock:
+                        self.matches[p1_sock] = new_match
+                        self.matches[p2_sock] = new_match
+
+                    # Gửi thông báo game_start cho cả hai
+                    for sock, name, opponent in [
+                        (p1_sock, p1_name, p2_name),
+                        (p2_sock, p2_name, p1_name)
+                    ]:
+                        self.send_message(sock, {
+                            'type': 'game_start',
+                            'opponent_name': opponent,
+                            'current_word': new_match.current_word,
+                            'next_letter': get_next_letter_constraint(new_match.current_word),
+                            'your_turn': new_match.current_player_name == name,
+                            'score': {p1_name: 0, p2_name: 0}
+                        })
+
+                    print(f"[MATCH] Game started successfully: {p1_name} vs {p2_name}")
+
+                except Exception as e:
+                    print(f"[MATCH ERROR] Không thể tạo match {p1_name} vs {p2_name}: {e}")
+                    # Đẩy lại vào queue nếu lỗi
+                    with self.queue_lock:
+                        self.waiting_queue.insert(0, (p2_sock, p2_name))
+                        self.waiting_queue.insert(0, (p1_sock, p1_name))
+                    # Đóng socket nếu không cứu được
+                    try:
+                        self.send_message(p1_sock, {'type': 'error', 'message': 'Lỗi tạo trận, thử lại sau'})
+                        self.send_message(p2_sock, {'type': 'error', 'message': 'Lỗi tạo trận, thử lại sau'})
+                    except:
+                        pass
 
     def _end_match(self, match, loser_socket, loser_name, reason):
         """
@@ -479,62 +505,54 @@ class WordChainServer:
         with self.matches_lock:
             self.matches.pop(loser_socket, None)
             self.matches.pop(winner_sock, None)
+        
+        if self.running:
+            time.sleep(0.15)
+            self._try_match_players()
 
         
 
     #  clean khi player disconnect hoặc ván kết thúc, luôn chạy trong finally của handle_player
     def _cleanup(self, sock, player_name, match):
-        """
-        Luôn chạy trong finally của handle_player.
-        Thứ tự: kết thúc ván → xóa queue → xóa matches → giải phóng tên → đóng socket.
-        """
-        # Nếu ván chưa kết thúc → người này mất kết nối → thua
+        """Dọn dẹp khi player disconnect hoặc handle_player kết thúc"""
+        # 1. Kết thúc trận nếu đang chơi
         if match and match.game_active:
-            opponent = match.get_opponent_socket(sock)
-            
-            if opponent in self.matches:
-                
-                self._end_match(match, loser_socket=sock, loser_name=player_name or '???', reason='disconnect')
+            self._end_match(match, loser_socket=sock, loser_name=player_name or 'Unknown', reason='disconnect')
 
-        # Xóa khỏi waiting_queue
+        # 2. Xóa khỏi waiting queue
         with self.queue_lock:
-            self.waiting_queue = [
-                (s, n) for s, n in self.waiting_queue if s != sock
-            ]
+            self.waiting_queue = [(s, n) for s, n in self.waiting_queue if s != sock]
 
-        # Xóa khỏi matches
+        # 3. Xóa khỏi matches
         with self.matches_lock:
-            match = self.matches.pop(sock, None)
+            self.matches.pop(sock, None)
 
-            if match:
-                opponent = match.get_opponent_socket(sock)
-                if opponent in self.matches:
-                    self.matches.pop(opponent, None)
-
-                # Giải phóng tên
+        # 4. Giải phóng tên (quan trọng nhất)
         if player_name:
             with self.names_lock:
                 self.active_names.discard(player_name)
 
-        # Đóng socket
-        def delayed_close(sock):
+        # 5. Đóng socket an toàn
+        def delayed_close(s):
             try:
-                sock.shutdown(socket.SHUT_WR)
+                s.shutdown(socket.SHUT_WR)
             except:
                 pass
-
-            time.sleep(0.5)
-
+            time.sleep(0.3)
             try:
-                sock.close()
+                s.close()
             except:
                 pass
 
         threading.Thread(target=delayed_close, args=(sock,), daemon=True).start()
 
         if player_name:
-            print(f"[SERVER] '{player_name}' disconnected | "
-                  f"Online: {len(self.active_names)}")
+            print(f"[SERVER] '{player_name}' cleaned up | Online now: {len(self.active_names)} | Waiting: {len(self.waiting_queue)}")
+
+        # Thử ghép đôi lại những người đang chờ
+        if self.running:
+            time.sleep(0.25)
+            self._try_match_players()
 
 
     def stop(self):
