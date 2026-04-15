@@ -4,7 +4,6 @@ Simple TCP server with immediate match-found system (no rooms).
 2 players accepted -> game starts automatically.
 """
 
-from re import match
 import socket
 import threading
 import json
@@ -119,7 +118,7 @@ class Match:
         self.current_player_name   = self.get_next_player_name()
         self.turn_start_time = time.time()
         self.turn_event.set()
-6
+        
 class WordChainServer:
 
     def __init__(self, host='localhost', port=5000, dictionary_file='vietnamese_dictionary.txt'): 
@@ -180,9 +179,10 @@ class WordChainServer:
                 except Exception as e:
                     if self.running:
                         print(f"[SERVER] Error accepting connection: {e}")
-        
+                    
         except Exception as e:
             print(f"[SERVER] Error starting server: {e}")
+            
         finally:
             self.stop()
     
@@ -190,7 +190,6 @@ class WordChainServer:
         """Handle a single player connection."""
         player_name = None
         match = None
-        
         try:
             # Set socket timeout
             client_socket.settimeout(None)
@@ -214,6 +213,11 @@ class WordChainServer:
                 self.send_message(client_socket, {'type': 'error', 'message': f'Invalid player name: {error_msg}'})
                 return
             
+            with self.names_lock:
+                if player_name in self.active_names:
+                    self.send_message(client_socket, {'type': 'error', 'message': 'Name already taken'})
+                    return
+                self.active_names.add(player_name)
             print(f"[SERVER] Player '{player_name}' from {client_addr} waiting for match...")
             
             # Add to waiting queue
@@ -225,60 +229,57 @@ class WordChainServer:
             self._try_match_players()   
             
             # If not in a match yet, wait for match
-            if match is None:
-                while match is None and self.running:
-                    with self.matches_lock:
-                        if client_socket in self.matches:
-                            match = self.matches[client_socket]
-                    time.sleep(0.1)
+            while self.running:
+                with self.matches_lock:
+                    if client_socket in self.matches:
+                        match = self.matches[client_socket]
+                        break
+                time.sleep(0.1)
             
             # Main game loop - handle word submissions
             buffer = ""
             while self.running:
                 try:
+                    
+                    with self.matches_lock:
+                        match = self.matches.get(client_socket)
+
+                    if not match:
+                        time.sleep(0.1)
+                        continue
+
+                    #  chỉ recv khi đã có match
                     data = client_socket.recv(1024).decode('utf-8')
                     if not data:
+                        print(f"[DISCONNECT] {player_name}")
                         break
-                    
+
                     buffer += data
                     while '\n' in buffer:
                         line, buffer = buffer.split('\n', 1)
-                        
                         if not line.strip():
-                            continue   
+                            continue
                         try:
                             msg_data = json.loads(line)
-                                
                             with self.matches_lock:
                                 match = self.matches.get(client_socket)
                             if not match:
-                                time.sleep(0.5) 
-                                break
+                                continue
                             self._dispatch(client_socket, player_name, msg_data, match)
-                                
+
                         except json.JSONDecodeError:
                             self.send_message(client_socket, {
                                 'type': 'error',
                                 'message': 'message unvalid'
                             })
-                
+
                 except (ConnectionResetError, BrokenPipeError, OSError):
                     break
                 except Exception as e:
                     print(f"[SERVER] Error in game loop: {e}")
                     break
-        
-        except Exception as e:
-            print(f"[SERVER] Error handling player {client_addr}: {e}")
-            if player_name:
-                print(f"[SERVER] Player '{player_name}' error: {e}")
-        
         finally:
-            # chỉ cleanup nếu thật sự disconnect
-            if not self.running:
-                self._cleanup(client_socket, player_name, match)
             self._cleanup(client_socket, player_name, match)
-    
     def process_word_submission(self, player_socket, player_name, word):
         """Process a word submission from a player."""
         with self.matches_lock:
@@ -375,7 +376,7 @@ class WordChainServer:
     def send_message(self, client_socket, data):
         """Gửi JSON + newline. Không ném exception ra ngoài."""
         try:
-            msg = json.dumps(data) + '\n'
+            msg = json.dumps(data, ensure_ascii=False) + '\n'
             client_socket.sendall(msg.encode('utf-8'))
         except Exception as e:
             print(f"[SEND ERROR] {e}")
@@ -413,12 +414,16 @@ class WordChainServer:
 
     def _try_match_players(self):
         with self.queue_lock:
+            pairs = []
             while len(self.waiting_queue) >= 2:
                 p1_sock, p1_name = self.waiting_queue.pop(0)
                 p2_sock, p2_name = self.waiting_queue.pop(0)
-
+                pairs.append((p1_sock, p1_name, p2_sock, p2_name))
+                
+            for  p1_sock, p1_name, p2_sock, p2_name in pairs:
                 new_match = Match(p1_sock, p1_name, p2_sock, p2_name, self.dictionary)
                 new_match.start_timeout_watcher(self)
+                
 
                 with self.matches_lock:
                     self.matches[p1_sock] = new_match
@@ -475,35 +480,7 @@ class WordChainServer:
             self.matches.pop(loser_socket, None)
             self.matches.pop(winner_sock, None)
 
-        print("[QUEUE] Players returned to waiting queue")
         
-        with self.queue_lock:
-            while len(self.waiting_queue) >= 2:
-                player1_socket, player1_name = self.waiting_queue.pop(0)
-                player2_socket, player2_name = self.waiting_queue.pop(0)
-
-                new_match = Match(player1_socket, player1_name,
-                                player2_socket, player2_name,
-                                self.dictionary)
-
-                new_match.start_timeout_watcher(self)
-
-                with self.matches_lock:
-                    self.matches[player1_socket] = new_match
-                    self.matches[player2_socket] = new_match
-
-                # gửi game_start lại
-                for sock, name, opponent in [
-                    (player1_socket, player1_name, player2_name),
-                    (player2_socket, player2_name, player1_name)
-                ]:
-                    self.send_message(sock, {
-                        'type': 'game_start',
-                        'opponent_name': opponent,
-                        'current_word': new_match.current_word,
-                        'next_letter': get_next_letter_constraint(new_match.current_word),
-                        'your_turn': new_match.current_player_name == name
-                    })
 
     #  clean khi player disconnect hoặc ván kết thúc, luôn chạy trong finally của handle_player
     def _cleanup(self, sock, player_name, match):
@@ -535,15 +512,9 @@ class WordChainServer:
                     self.matches.pop(opponent, None)
 
                 # Giải phóng tên
-                if player_name:
-                    with self.names_lock:
-                        if player_name in self.active_names:
-                            self.send_message(sock, {
-                                'type': 'error',
-                                'message': 'Name already taken'
-                            })
-                        self.active_names.discard(player_name)
-                        
+        if player_name:
+            with self.names_lock:
+                self.active_names.discard(player_name)
 
         # Đóng socket
         def delayed_close(sock):
