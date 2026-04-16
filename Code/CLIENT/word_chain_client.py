@@ -182,7 +182,7 @@ def show_game_over(you_win, winner, loser, reason, score, history):
 class TurnTimer:
     """Hiển thị countdown timer trên cùng 1 dòng."""
  
-    def __init__(self, seconds=10):
+    def __init__(self, seconds=30):
         self.seconds = seconds
         self._stop = threading.Event()
         self._thread = None
