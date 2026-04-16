@@ -465,7 +465,7 @@ class WordChainClient:
         Xử lý 1 lượt của người chơi.
         Loop nội bộ cho đến khi từ được chấp nhận, bỏ qua, hoặc game kết thúc.
         """
-        timer = TurnTimer(self.TURN_TIMEOUT)
+        turn_start = time.time()   # ghi thời điểm bắt đầu lượt, KHÔNG reset khi loop
  
         while self.game_active:
             # Hiển thị trạng thái lượt
@@ -476,7 +476,11 @@ class WordChainClient:
             print(col(C.DIM, "      (boqua = bỏ qua lượt | quit = thoát)"))
             print()
  
-            # Khởi động timer
+            # Tính thời gian còn lại thực tế (đồng bộ với server)
+            elapsed   = time.time() - turn_start
+            remaining = max(1, int(self.TURN_TIMEOUT - elapsed))
+            # Tạo timer mới với số giây còn lại
+            timer = TurnTimer(remaining)
             timer.start()
  
             # Nhận input trong thread riêng
