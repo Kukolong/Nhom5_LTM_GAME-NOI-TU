@@ -144,8 +144,8 @@ class WordChainServer:
         self.active_names = set()
         self.names_lock   = threading.Lock()
         
+        # Lấy đường dẫn tuyệt đối của thư mục chứa file server hiện tại
         if dictionary_file == 'vietnamese_dictionary.txt':
-            # Lấy đường dẫn tuyệt đối của thư mục chứa file server hiện tại
             base_dir = os.path.dirname(os.path.abspath(__file__))
             dictionary_file = os.path.join(base_dir, 'vietnamese_dictionary.txt')
         
@@ -226,19 +226,15 @@ class WordChainServer:
             
             with self.names_lock:
                 if player_name in self.active_names:
-                    print(f"[NAME] '{player_name}' is already active → forcing cleanup for rematch")
+                    # Gửi lỗi về client nếu tên đã tồn tại
+                    self.send_message(client_socket, {
+                        'type': 'error', 
+                        'message': f"Tên '{player_name}' đã có người sử dụng!"
+                    })
+                    print(f"[NAME REJECTED] {player_name} already exists")
+                    return # Ngắt kết nối ngay lập tức để người dùng nhập lại
 
-                    # Kiểm tra xem tên này có thật sự đang trong trận không
-                    still_in_match = False
-                    with self.matches_lock:
-                        for m in list(self.matches.values()):
-                            if m.player1_name == player_name or m.player2_name == player_name:
-                                still_in_match = True
-                                break
-                    
-                    if not still_in_match:
-                        self.active_names.discard(player_name)   # Xóa tên cũ để cho reconnect
-
+                # Nếu tên hợp lệ và chưa có, mới thêm vào danh sách online
                 self.active_names.add(player_name)
             
             # Add to waiting queue
